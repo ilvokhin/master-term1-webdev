@@ -5,19 +5,22 @@ function CouchDbViewer(dbName) {
   this.requestPath = '/' + this.dbName + '/_all_docs';
 }
 
-CouchDbViewer.prototype.getData = function (timeoutCallback) {
+CouchDbViewer.prototype.getData = function (successCallback, timeoutCallback) {
   var request = new XMLHttpRequest();
   request.ontimeout = timeoutCallback;
 
-  request.open('GET', this.requestPath, false);
+  request.open('GET', this.requestPath);
   //request.timeout = 1;
-  request.send(data);
 
-  if( request.status != 200 ) {
-    console.log('CouchDB request failed: ' + request.statusText);
+  request.onload = function() {
+    if( request.status != 200 ) {
+      console.log('CouchDB request failed: ' + request.statusText);
+      return;
+    }
+    successCallback(request.responseText);
   }
 
-  return request.responseText;
+  request.send(null);
 }
 
 // local data storage
@@ -87,17 +90,18 @@ CouchDbCache.prototype.getData = function() {
   localCache = this.localCache;
   makeTable = this.makeTableCallback;
 
-  var data = this.couchDb.getData(function() {
-    console.log('Timeout occurs should use cache');
-    localCache.get(makeTable);
-  });
-
-  if( data ) {
-    this.localCache.put(data);
-    this.makeTableCallback(data);
+  successCallback = function(data) {
+    console.log('Successfully get data: ' + data);
+    localCache.put(data);
+    makeTable(data);
   }
 
-  return data;
+  timeoutCallback = function() {
+    console.log('Timeout occurs should use cache');
+    localCache.get(makeTable);
+  }
+
+  this.couchDb.getData(successCallback, timeoutCallback);
 }
 
 function makeTable(rawCouchData) {
@@ -137,5 +141,4 @@ function makeTable(rawCouchData) {
 
 // make request
 couchDb = new CouchDbCache('test', makeTable);
-var data = couchDb.getData();
-console.log(data);
+couchDb.getData();
