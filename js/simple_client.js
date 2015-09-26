@@ -1,7 +1,8 @@
 
 // server db
-function CouchDbViewer(dbName) {
+function CouchDbViewer(dbName, forceTimeout) {
   this.dbName = dbName;
+  this.forceTimeout = forceTimeout;
   this.requestPath = '/' + this.dbName + '/_all_docs';
 }
 
@@ -10,7 +11,10 @@ CouchDbViewer.prototype.getData = function (successCallback, timeoutCallback) {
   request.ontimeout = timeoutCallback;
 
   request.open('GET', this.requestPath);
-  //request.timeout = 1;
+
+  if( this.forceTimeout ) {
+    request.timeout = 1;
+  }
 
   request.onload = function() {
     if( request.status != 200 ) {
@@ -63,7 +67,13 @@ LocalCache.prototype.get = function (successCallback) {
     var request = db.transaction([storeName], 'readonly').objectStore(storeName).get(cacheKey);
     request.onerror = this.logError;
     request.onsuccess = function() {
-      successCallback(request.result.val);
+      if( request.result ) {
+        successCallback(request.result.val);
+      }
+      else {
+        // not success at all, we create new empty storage
+        successCallback('');
+      }
     }
   });
 }
@@ -78,8 +88,8 @@ LocalCache.prototype.put = function (data) {
 }
 
 // local + server 
-function CouchDbCache(dbName, makeTableCallback) {
-  this.couchDb = new CouchDbViewer(dbName);
+function CouchDbCache(dbName, makeTableCallback, forceTimeout) {
+  this.couchDb = new CouchDbViewer(dbName, forceTimeout);
   this.localCache = new LocalCache(dbName);
   this.makeTableCallback = makeTableCallback;
 }
@@ -91,7 +101,6 @@ CouchDbCache.prototype.getData = function() {
   makeTable = this.makeTableCallback;
 
   successCallback = function(data) {
-    console.log('Successfully get data: ' + data);
     localCache.put(data);
     makeTable(data);
   }
@@ -105,12 +114,14 @@ CouchDbCache.prototype.getData = function() {
 }
 
 function makeTable(rawCouchData) {
-  var parentElem = 'db-table';
-  var parsedCouchData = JSON.parse(rawCouchData);
+  // we can get nothing, if request failed and cache is empty,
+  // anyway we should draw some dummy table
+  if( !rawCouchData ) {
+    console.log('Got empty data, make dummy table');
+    rawCouchData = '{"total_rows":1,"rows":[{"id":"empty","key":"empty","value":"empty"}]}';
+  }
 
-  if( !parsedCouchData.total_rows ) {
-    return;
-  }  
+  var parsedCouchData = JSON.parse(rawCouchData);
 
   var table = document.createElement('table');
   
@@ -136,9 +147,61 @@ function makeTable(rawCouchData) {
     } 
   }
 
+  var parentElem = 'db-table';
   document.getElementById(parentElem).appendChild(table);
 }
 
-// make request
-couchDb = new CouchDbCache('test', makeTable);
-couchDb.getData();
+function makeTablesList(parentName, rawData) {
+  var select = document.getElementById(parentName);
+  var data = JSON.parse(rawData);
+
+  for(var i = 0; i < data.length; i++) {
+    var option = document.createElement('option');
+    option.innerHTML = data[i];
+    option.value = data[i];
+    select.appendChild(option);
+  }
+}
+
+function loadCouchTables(successCallback) {
+  var request = new XMLHttpRequest();
+  var requestPath = '/_all_dbs';
+
+  request.open('GET', requestPath);
+
+  request.onload = function() {
+    if( request.status != 200 ) {
+      console.log('CouchDB request failed: ' + request.statusText);
+      return;
+    }
+    successCallback('tables-list', request.responseText);
+  }
+
+  request.send(null);
+}
+
+function loadData() {
+  var tablesList = document.getElementById('tables-list');
+  var loadList = document.getElementById('load-list');
+
+  var selectedTable = tablesList.options[tablesList.selectedIndex].value;
+  var selectedLoad = loadList.options[loadList.selectedIndex].value;
+
+  // clear table (dirty hack)
+  var dbTable = document.getElementById('db-table');
+  dbTable.innerHTML = '';
+
+  // make request
+  var forceTimeout = (selectedLoad == "local");
+  var couchDb = new CouchDbCache(selectedTable, makeTable, forceTimeout);
+  couchDb.getData();
+}
+
+loadCouchTables(makeTablesList);
+makeTablesList('load-list', '["online", "local"]');
+
+var loadButton = document.getElementById('load');
+loadButton.onclick = loadData;
+
+// make empty table
+makeTable('');
