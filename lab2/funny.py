@@ -4,8 +4,8 @@
 from flask import Flask, request, session, g, redirect, url_for, \
   abort, render_template, flash
 
-from couchdbkit import Server, Document, StringProperty, IntegerProperty, \
-  DateTimeProperty, StringListProperty, BooleanProperty, loaders
+from couchdbkit import Server, Document, StringProperty, DateTimeProperty, \
+  StringListProperty, BooleanProperty, loaders
 
 import uuid
 import hashlib
@@ -40,16 +40,16 @@ class Post(Document):
   author = StringProperty()
   title = StringProperty()
   text = StringProperty()
-  like_cnt = IntegerProperty()
-  star_cnt = IntegerProperty()
+  likes = StringListProperty()
+  stars = StringListProperty()
   date = DateTimeProperty()
   tags = StringListProperty()
 
 def make_post_from_request(request):
   return Post(title = request.form['title'],
     text = request.form['text'],
-    like_cnt = 0,
-    star_cnt = 0)
+    likes = [],
+    stars = [])
 
 def make_password_hash(salt, password):
   return hashlib.md5(salt + password).hexdigest()
@@ -74,7 +74,7 @@ def before_request():
 @app.route('/')
 def show_posts():
   posts = list(Post.view('posts/all'))
-  return render_template('show_posts.html', posts = posts)
+  return render_template('show_posts.html', posts = posts, submit = 'Share')
 
 def login_required(f):
   @functools.wraps(f)
@@ -117,7 +117,7 @@ def edit_post(id):
     flash('Post was successfully updated')
     return redirect(url_for('show_posts'))
 
-  return render_template('edit_post.html', post = post)
+  return render_template('edit_post.html', post = post, submit = 'Update')
 
 @app.route('/remove_post/<id>', methods = ['GET'])
 @privileged_required

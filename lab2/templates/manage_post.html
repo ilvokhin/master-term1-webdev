@@ -1,0 +1,15 @@
+<dl>
+  <dt>Title:
+  {% set title_value = '' %}
+  {% if post %}
+    {% set title_value = post.title %}
+  {% endif %}
+  <dd><input type=text size=30, name=title value="{{ title_value }}">
+  <dt>Text:
+  {% set text = '' %}
+  {% if post %}
+    {% set text = post.text|safe %}
+  {% endif %}
+  <dd><textarea name=text rows=5 cols=40>{{ text }}</textarea>
+  <dd><input type=submit value="{{ submit }}">
+</dl>

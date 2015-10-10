@@ -1,14 +1,8 @@
 {% extends "layout.html" %}
 {% block body %}
   {% if session.logged_in %}
-    <form action="{{ url_for('add_post') }}" method=post class=add-entry>
-      <dl>
-        <dt>Title:
-        <dd><input type=text size=30, name=title>
-        <dt>Text:
-        <dd><textarea name=text rows=5 cols=40></textarea>
-        <dd><input type=submit value=Share>
-      </dl>
+    <form action="{{ url_for('add_post') }}" method=post class=add-post>
+      {% include "manage_post.html" %}
     </form>
   {% endif %}
 
