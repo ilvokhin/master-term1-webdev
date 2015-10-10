@@ -5,7 +5,7 @@ from flask import Flask, request, session, g, redirect, url_for, \
   abort, render_template, flash
 
 from couchdbkit import Server, Document, StringProperty, IntegerProperty, \
-  DateTimeProperty, StringListProperty, loaders
+  DateTimeProperty, StringListProperty, BooleanProperty, loaders
 
 import uuid
 import hashlib
@@ -32,7 +32,7 @@ class User(Document):
   username = StringProperty()
   salt = StringProperty()
   password = StringProperty()
-  role = StringProperty()
+  privileged = BooleanProperty()
   starred = StringListProperty()
 
 class Post(Document):
@@ -56,11 +56,11 @@ def make_password_hash(salt, password):
 def make_user_from_request(request):
   # we don't store real password for security reason
   salt = uuid.uuid4().hex
-  password = make_password_hash(salt, request['password'])
+  password = make_password_hash(salt, request.form['password'])
   return User(username = request.form['username'],
     salt = salt,
     password = password,
-    role = 'user',
+    privileged = False,
     starred = [])
 
 @app.before_request
@@ -84,6 +84,36 @@ def add_post():
   g.db.save_doc(new_post)
 
   flash('New post was successfully created')
+  return redirect(url_for('show_posts'))
+
+@app.route('/edit_post/<id>', methods = ['GET', 'POST'])
+def edit_post(id):
+  if not session.get('privileged'):
+    abort(403)
+  if not g.db.doc_exist(id):
+    abort(404)
+
+  post = Post.get(id)
+
+  if request.method == 'POST':
+    post.title = request.form['title']
+    post.text = request.form['text']
+    post.save()
+
+    flash('Post was successfully updated')
+    return redirect(url_for('show_posts'))
+
+  return render_template('edit_post.html', post = post)
+
+@app.route('/remove_post/<id>', methods = ['GET'])
+def remove_post(id):
+  if not session.get('privileged'):
+    abort(403)
+  if not g.db.doc_exist(id):
+    abort(404)
+  Post.get(id).delete()
+
+  flash('Post was successfully removed')
   return redirect(url_for('show_posts'))
 
 @app.route('/sign_up', methods = ['GET', 'POST'])
@@ -124,6 +154,7 @@ def login():
       error = 'Invalid password'
     else:
       session['logged_in'] = True
+      session['privileged'] = user[0].privileged
       flash('You were logged in')
       return redirect(url_for('show_posts'))
 
@@ -132,6 +163,7 @@ def login():
 @app.route('/logout')
 def logout():
   session.pop('logged_in', None)
+  session.pop('privileged', None)
   flash('You were logged out')
   return redirect(url_for('show_posts'))
 
