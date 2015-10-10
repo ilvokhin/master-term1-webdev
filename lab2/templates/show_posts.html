@@ -5,14 +5,32 @@
       {% include "manage_post.html" %}
     </form>
   {% endif %}
-
   <ul class=posts>
     {% for post in posts %}
       <li><h2>{{ post.title }}</h2>{{ post.text|safe }}
+      <div class=counters>
+        likes: {{ post.likes|length }}
+        stars: {{ post.stars|length }}
+      </div>
+      {% if session.logged_in %}
+        <div class=loved>
+            {% set like_text = 'like' %}
+            {% if session.uid in post.likes %}
+              {% set like_text = 'unlike' %}
+            {% endif %}
+          <a href="#">{{ like_text }}</a>
+            {% set star_text = 'star' %}
+            {% if session.uid in post.stars %}
+              {% set star_text = 'unstar' %}
+            {% endif %}
+          <a href="#">{{ star_text }}</a>
+        </div>
+      {% endif %}
       {% if session.privileged %}
-        <br>
-        <a href="{{ url_for('edit_post', id=post._id) }}">edit</a>
-        <a href="{{ url_for('remove_post', id=post._id) }}">remove</a>
+        <div class=privileged>
+          <a href="{{ url_for('edit_post', id=post._id) }}">edit</a>
+          <a href="{{ url_for('remove_post', id=post._id) }}">remove</a>
+        </div>
       {% endif %}
     {% else %}
       <li><em>No posts here</em>

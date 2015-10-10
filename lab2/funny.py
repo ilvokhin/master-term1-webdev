@@ -5,7 +5,7 @@ from flask import Flask, request, session, g, redirect, url_for, \
   abort, render_template, flash
 
 from couchdbkit import Server, Document, StringProperty, DateTimeProperty, \
-  StringListProperty, BooleanProperty, loaders
+  SetProperty, BooleanProperty, loaders
 
 import uuid
 import hashlib
@@ -34,22 +34,22 @@ class User(Document):
   salt = StringProperty()
   password = StringProperty()
   privileged = BooleanProperty()
-  starred = StringListProperty()
+  starred = SetProperty()
 
 class Post(Document):
   author = StringProperty()
   title = StringProperty()
   text = StringProperty()
-  likes = StringListProperty()
-  stars = StringListProperty()
+  likes = SetProperty()
+  stars = SetProperty()
   date = DateTimeProperty()
-  tags = StringListProperty()
+  tags = SetProperty()
 
 def make_post_from_request(request):
   return Post(title = request.form['title'],
     text = request.form['text'],
-    likes = [],
-    stars = [])
+    likes = set([]),
+    stars = set([]))
 
 def make_password_hash(salt, password):
   return hashlib.md5(salt + password).hexdigest()
@@ -167,7 +167,9 @@ def login():
       error = 'Invalid password'
     else:
       session['logged_in'] = True
+      session['uid'] = user[0]._id
       session['privileged'] = user[0].privileged
+
       flash('You were logged in')
       return redirect(url_for('show_posts'))
 
