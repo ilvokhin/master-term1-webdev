@@ -9,6 +9,7 @@ from couchdbkit import Server, Document, StringProperty, IntegerProperty, \
 
 import uuid
 import hashlib
+import functools
 
 # conf
 DB = 'funny'
@@ -75,11 +76,25 @@ def show_posts():
   posts = list(Post.view('posts/all'))
   return render_template('show_posts.html', posts = posts)
 
-@app.route('/add_post', methods = ['POST'])
-def add_post():
-  if not session.get('logged_in'):
-    abort(401)
+def login_required(f):
+  @functools.wraps(f)
+  def wrapped(*args, **kwargs):
+    if not session.get('logged_in'):
+      abort(401)
+    return f(*args, **kwargs)
+  return wrapped
 
+def privileged_required(f):
+  @functools.wraps(f)
+  def wrapped(*args, **kwargs):
+    if not session.get('privileged'):
+      abort(403)
+    return f(*args, **kwargs)
+  return wrapped
+
+@app.route('/add_post', methods = ['POST'])
+@login_required
+def add_post():
   new_post = make_post_from_request(request)
   g.db.save_doc(new_post)
 
@@ -87,9 +102,8 @@ def add_post():
   return redirect(url_for('show_posts'))
 
 @app.route('/edit_post/<id>', methods = ['GET', 'POST'])
+@privileged_required
 def edit_post(id):
-  if not session.get('privileged'):
-    abort(403)
   if not g.db.doc_exist(id):
     abort(404)
 
@@ -106,9 +120,8 @@ def edit_post(id):
   return render_template('edit_post.html', post = post)
 
 @app.route('/remove_post/<id>', methods = ['GET'])
+@privileged_required
 def remove_post(id):
-  if not session.get('privileged'):
-    abort(403)
   if not g.db.doc_exist(id):
     abort(404)
   Post.get(id).delete()
