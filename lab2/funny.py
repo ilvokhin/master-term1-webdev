@@ -7,14 +7,14 @@ from flask import Flask, request, session, g, redirect, url_for, \
 from couchdbkit import Server, Document, StringProperty, IntegerProperty, \
   DateTimeProperty, StringListProperty, loaders
 
+import uuid
+import hashlib
+
 # conf
-DB_POSTS = 'posts'
-DB_USERS = 'users'
+DB = 'funny'
 HOST='0.0.0.0'
 DEBUG = True
 SECRET_KEY = 'you shall not pass!'
-USERNAME = 'root'
-PASSWORD = 'toor'
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -50,17 +50,29 @@ def make_post_from_request(request):
     like_cnt = 0,
     star_cnt = 0)
 
+def make_password_hash(salt, password):
+  return hashlib.md5(salt + password).hexdigest()
+
+def make_user_from_request(request):
+  # we don't store real password for security reason
+  salt = uuid.uuid4().hex
+  password = make_password_hash(salt, request['password'])
+  return User(username = request.form['username'],
+    salt = salt,
+    password = password,
+    role = 'user',
+    starred = [])
+
 @app.before_request
 def before_request():
-  g.db_users = connect_db(app.config['DB_USERS'])
-  User.set_db(g.db_users)
+  g.db = connect_db(app.config['DB'])
 
-  g.db_posts = connect_db(app.config['DB_POSTS'])
-  Post.set_db(g.db_posts)
+  User.set_db(g.db)
+  Post.set_db(g.db)
 
 @app.route('/')
 def show_posts():
-  posts = Post.view('posts/all')
+  posts = list(Post.view('posts/all'))
   return render_template('show_posts.html', posts = posts)
 
 @app.route('/add_post', methods = ['POST'])
@@ -69,18 +81,46 @@ def add_post():
     abort(401)
 
   new_post = make_post_from_request(request)
-  g.db_posts.save_doc(new_post)
+  g.db.save_doc(new_post)
 
   flash('New post was successfully created')
   return redirect(url_for('show_posts'))
+
+@app.route('/sign_up', methods = ['GET', 'POST'])
+def sign_up():
+  error = None
+  if request.method == 'POST':
+    if not request.form['username']:
+      error = 'Empty username'
+    elif not request.form['password'] or not request.form['confirm']:
+      error = 'Empty password or confirm password field'
+    elif request.form['password'] !=  request.form['confirm']:
+      error = 'Passwords does not match'
+    else:
+      # looks like everything ok, check db
+      username = request.form['username']
+      password = request.form['password']
+      user = list(User.view('users/by_username', key=username))
+      if user:
+        error = 'User already exists'
+      else:
+        new_user = make_user_from_request(request)
+        g.db.save_doc(new_user)
+        flash('You have successfully registered')
+        return redirect(url_for('show_posts'))
+
+  return render_template('sign_up.html', error = error)
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
   error = None
   if request.method == 'POST':
-    if request.form['username'] != app.config['USERNAME']:
+    username = request.form['username']
+    password = request.form['password']
+    user = list(User.view('users/by_username', key=username))
+    if not user:
       error = 'Invalid username'
-    elif request.form['password'] != app.config['PASSWORD']:
+    elif make_password_hash(user[0].salt, password) != user[0].password:
       error = 'Invalid password'
     else:
       session['logged_in'] = True
