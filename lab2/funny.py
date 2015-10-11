@@ -129,6 +129,34 @@ def remove_post(id):
   flash('Post was successfully removed')
   return redirect(url_for('show_posts'))
 
+@app.route('/like_post/<id>', methods = ['GET'])
+@login_required
+def like_post(id):
+  if not g.db.doc_exist(id):
+    abort(404)
+  post = Post.get(id)
+  uid = session.get('uid')
+  if uid not in post.likes:
+    post.likes.add(uid)
+  else:
+    post.likes.remove(uid)
+  post.save()
+  return 'OK', 200, {'Content-Type': 'text/plain'}
+
+@app.route('/star_post/<id>', methods = ['GET'])
+@login_required
+def star_post(id):
+  if not g.db.doc_exist(id):
+    abort(404)
+  post = Post.get(id)
+  uid = session.get('uid')
+  if uid not in post.stars:
+    post.stars.add(uid)
+  else:
+    post.stars.remove(uid)
+  post.save()
+  return 'OK', 200, {'Content-Type': 'text/plain'}
+
 @app.route('/sign_up', methods = ['GET', 'POST'])
 def sign_up():
   error = None
@@ -178,7 +206,9 @@ def login():
 @app.route('/logout')
 def logout():
   session.pop('logged_in', None)
+  session.pop('uid', None)
   session.pop('privileged', None)
+
   flash('You were logged out')
   return redirect(url_for('show_posts'))
 
