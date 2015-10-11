@@ -49,7 +49,8 @@ def make_post_from_request(request):
   return Post(title = request.form['title'],
     text = request.form['text'],
     likes = set([]),
-    stars = set([]))
+    stars = set([]),
+    tags= set(request.form['tags'].split()))
 
 def make_password_hash(salt, password):
   return hashlib.md5(salt + password).hexdigest()
@@ -74,7 +75,12 @@ def before_request():
 @app.route('/')
 def show_posts():
   posts = list(Post.view('posts/all'))
-  return render_template('show_posts.html', posts = posts, submit = 'Share')
+  return render_template('main.html', posts = posts, submit = 'Share')
+
+@app.route('/tag/<tag>')
+def show_posts_tag(tag):
+  posts = list(Post.view('posts/by_tag', key=tag))
+  return render_template('tags.html', posts = posts)
 
 def login_required(f):
   @functools.wraps(f)
@@ -112,6 +118,7 @@ def edit_post(id):
   if request.method == 'POST':
     post.title = request.form['title']
     post.text = request.form['text']
+    post.tags = set(request.form['tags'].split())
     post.save()
 
     flash('Post was successfully updated')

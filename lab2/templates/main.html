@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if session.logged_in %}
+    <form action="{{ url_for('add_post') }}" method=post class=add-post>
+      {% include "manage_post.html" %}
+    </form>
+  {% endif %}
+  {% include "show_posts.html" %}
+{% endblock %}
