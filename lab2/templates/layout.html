@@ -9,6 +9,7 @@
       <a href="{{ url_for('login') }}">log in</a>
       <a href="{{ url_for('sign_up') }}">sign up</a>
     {% else %}
+      <a href="{{ url_for('show_posts_starred') }}">starred</a>
       <a href="{{ url_for('logout') }}">log out</a>
     {% endif %}
   </div>

@@ -72,16 +72,6 @@ def before_request():
   User.set_db(g.db)
   Post.set_db(g.db)
 
-@app.route('/')
-def show_posts():
-  posts = list(Post.view('posts/all'))
-  return render_template('main.html', posts = posts, submit = 'Share')
-
-@app.route('/tag/<tag>')
-def show_posts_tag(tag):
-  posts = list(Post.view('posts/by_tag', key=tag))
-  return render_template('tags.html', posts = posts)
-
 def login_required(f):
   @functools.wraps(f)
   def wrapped(*args, **kwargs):
@@ -97,6 +87,24 @@ def privileged_required(f):
       abort(403)
     return f(*args, **kwargs)
   return wrapped
+
+@app.route('/')
+def show_posts():
+  posts = list(Post.view('posts/all'))
+  return render_template('main.html', posts = posts, submit = 'Share')
+
+@app.route('/tag/<tag>', methods = ['GET'])
+def show_posts_tag(tag):
+  posts = list(Post.view('posts/by_tag', key=tag))
+  return render_template('posts.html', posts = posts)
+
+@app.route('/starred', methods = ['GET'])
+@login_required
+def show_posts_starred():
+  # I think it's not a good idea to use such implementation.
+  user = User.get(session.get('uid'))
+  posts = [elem for elem in Post.view('posts/all') if elem._id in user.starred]
+  return render_template('posts.html', posts = posts)
 
 @app.route('/add_post', methods = ['POST'])
 @login_required
@@ -157,11 +165,15 @@ def star_post(id):
     abort(404)
   post = Post.get(id)
   uid = session.get('uid')
+  user = User.get(uid)
   if uid not in post.stars:
     post.stars.add(uid)
+    user.starred.add(post._id)
   else:
     post.stars.remove(uid)
+    user.starred.remove(post._id)
   post.save()
+  user.save()
   return 'OK', 200, {'Content-Type': 'text/plain'}
 
 @app.route('/sign_up', methods = ['GET', 'POST'])
