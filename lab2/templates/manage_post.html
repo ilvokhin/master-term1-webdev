@@ -4,18 +4,18 @@
   {% if post %}
     {% set title_value = post.title %}
   {% endif %}
-  <dd><input type=text size=55, name=title value="{{ title_value }}">
+  <dd><input type=text size=55, name=title value="{{ title_value }}" required>
   <dt>Text:
   {% set text = '' %}
   {% if post %}
     {% set text = post.text|safe %}
   {% endif %}
-  <dd><textarea name=text rows=5 cols=50>{{ text }}</textarea>
+  <dd><textarea name=text rows=5 cols=50 required>{{ text }}</textarea>
   {% set tags = '' %}
   {% if post %}
     {% set tags = post.tags|join(' ') %}
   {% endif %}
   <dt>Tags:
-  <dd><input type=text size=55, name=tags value="{{ tags }}">
+  <dd><input type=text size=55, name=tags value="{{ tags }}" required>
   <dd><input type=submit value="{{ submit }}">
 </dl>
