@@ -37,7 +37,7 @@ def privileged_required(f):
 
 @app.route('/')
 def show_posts():
-  posts = list(Post.view('posts/all'))
+  posts = list(Post.view('posts/by_date'))[::-1]
   return render_template('main.html', posts = posts, submit = 'Share')
 
 @app.route('/tag/<tag>', methods = ['GET'])
