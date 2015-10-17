@@ -50,7 +50,7 @@ def show_posts_tag(tag):
 def show_posts_starred():
   # I think it's not a good idea to use such implementation.
   user = User.get(session.get('uid'))
-  posts = [elem for elem in Post.view('posts/all') if elem._id in user.starred]
+  posts = [elem for elem in Post.view('posts/by_date') if elem._id in user.starred]
   return render_template('posts.html', posts = posts)
 
 @app.route('/add_post', methods = ['POST'])
