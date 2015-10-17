@@ -8,7 +8,7 @@
   <dt>Text:
   {% set text = '' %}
   {% if post %}
-    {% set text = post.text|safe %}
+    {% set text = post.text %}
   {% endif %}
   <dd><textarea name=text rows=5 cols=50 required>{{ text }}</textarea>
   {% set tags = '' %}

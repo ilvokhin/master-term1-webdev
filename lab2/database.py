@@ -6,6 +6,7 @@ from couchdbkit import Server, Document, StringProperty, DateTimeProperty, \
 
 import uuid
 import hashlib
+import datetime
 
 def connect_db(db_name):
   srv = Server()
@@ -37,6 +38,7 @@ def make_post_from_request(request):
     text = request.form['text'],
     likes = set([]),
     stars = set([]),
+    date = datetime.datetime.utcnow(),
     tags= set(request.form['tags'].split()))
 
 def make_password_hash(salt, password):
