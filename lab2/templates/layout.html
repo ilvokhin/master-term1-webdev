@@ -16,6 +16,11 @@
   {% for message in get_flashed_messages() %}
     <div class="flash">{{ message }}</div>
   {% endfor %}
+  {% if errors %}
+    {% for error in errors %}
+      <p class=error>{{ error }}
+    {% endfor %}
+  {% endif %}
   {% block body %}
   {% endblock %}
 </div>

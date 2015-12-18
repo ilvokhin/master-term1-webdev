@@ -6,9 +6,18 @@ from wtforms import TextField
 from wtforms import PasswordField
 from wtforms import SelectField
 from wtforms import validators
+from wtforms.widgets import TextArea
 
 def strip_filter(x):
   return x.strip() if x else None
+
+def format_form_errors(raw_errors):
+  out = []
+  for field, errors in raw_errors:
+    for error in errors:
+      error_msg = 'Error in field: %s - %s' % (field, error)
+      out.append(error_msg)
+  return out
 
 class SignUpForm(Form):
   username = TextField \
@@ -25,8 +34,7 @@ class SignUpForm(Form):
       validators.EqualTo('confirm', message = 'Passwords must match.')
     ]
   )
-  confirm = PasswordField('password', [validators.Required()]
-    
+  confirm = PasswordField('confirm', [validators.Required()])
 
 class LoginForm(Form):
   username = TextField \
@@ -39,5 +47,5 @@ class LoginForm(Form):
 
 class PostForm(Form):
   title = TextField('title', [validators.Length(min=3)], filters = [strip_filter])
-  text = TextField('text', [validators.Length(min=3)], filters = [strip_filter])
+  text = TextField('text', [validators.Length(min=3)], filters = [strip_filter], widget=TextArea())
   tags = TextField('tags', [validators.Length(min=3)], filters = [strip_filter])

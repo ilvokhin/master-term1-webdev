@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
-  <form action="{{ url_for('edit_post', id=post._id) }}" method=post class=edit-post>
+  <form action="{{ url_for('edit_post', id=id) }}" method=post class=edit-post>
     {% include "manage_post.html" %}
   </form>
 {% endblock %}

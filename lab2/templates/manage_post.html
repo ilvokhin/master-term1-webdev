@@ -1,21 +1,9 @@
 <dl>
   <dt>Title:
-  {% set title_value = '' %}
-  {% if post %}
-    {% set title_value = post.title %}
-  {% endif %}
-  <dd><input type=text size=55, name=title value="{{ title_value }}" required>
+  <dd>{{ form.title(required=True, placeholder=form.title.label.text, type=text, size=55) }}
   <dt>Text:
-  {% set text = '' %}
-  {% if post %}
-    {% set text = post.text %}
-  {% endif %}
-  <dd><textarea name=text rows=5 cols=50 required>{{ text }}</textarea>
-  {% set tags = '' %}
-  {% if post %}
-    {% set tags = post.tags|join(' ') %}
-  {% endif %}
+  <dd>{{ form.text(required=True, placeholder=form.text.label.text, type=text, rows=5, cols=50) }}
   <dt>Tags:
-  <dd><input type=text size=55, name=tags value="{{ tags }}" required>
+  <dd>{{ form.tags(required=True, placeholder=form.tags.label.text, type=text, size=55) }}
   <dd><input type=submit value="{{ submit }}">
 </dl>

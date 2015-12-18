@@ -7,6 +7,8 @@ from flask import Flask, request, session, g, redirect, url_for, \
 from database import connect_db, User, Post, make_post_from_request, \
   make_user_from_request, make_password_hash
 
+from forms import SignUpForm, LoginForm, PostForm, format_form_errors
+
 import functools
 
 app = Flask(__name__)
@@ -35,10 +37,20 @@ def privileged_required(f):
     return f(*args, **kwargs)
   return wrapped
 
-@app.route('/')
+@app.route('/', methods = ['GET', 'POST'])
 def show_posts():
+  form = PostForm(request.form)
   posts = list(Post.view('posts/by_date'))[::-1]
-  return render_template('main.html', posts = posts, submit = 'Share')
+  errors = []
+  if request.method == 'POST' and form.validate():
+    new_post = make_post_from_request(request)
+    g.db.save_doc(new_post)
+    flash('New post was successfully created')
+    return redirect(url_for('show_posts'))
+
+  errors.extend(format_form_errors(form.errors.items()))
+  return render_template \
+    ('main.html', form = form, posts = posts, submit = 'Share', errors = errors)
 
 @app.route('/tag/<tag>', methods = ['GET'])
 def show_posts_tag(tag):
@@ -53,33 +65,32 @@ def show_posts_starred():
   posts = [elem for elem in Post.view('posts/by_date') if elem._id in user.starred]
   return render_template('posts.html', posts = posts)
 
-@app.route('/add_post', methods = ['POST'])
-@login_required
-def add_post():
-  new_post = make_post_from_request(request)
-  g.db.save_doc(new_post)
-
-  flash('New post was successfully created')
-  return redirect(url_for('show_posts'))
-
 @app.route('/edit_post/<id>', methods = ['GET', 'POST'])
 @privileged_required
 def edit_post(id):
   if not g.db.doc_exist(id):
     abort(404)
 
+  form = PostForm(request.form)
   post = Post.get(id)
+  errors = []
 
-  if request.method == 'POST':
-    post.title = request.form['title']
-    post.text = request.form['text']
-    post.tags = set(request.form['tags'].split())
+  if request.method == 'POST' and form.validate():
+    post.title = form.title.data
+    post.text = form.text.data
+    post.tags = set(form.tags.data.split())
     post.save()
-
     flash('Post was successfully updated')
     return redirect(url_for('show_posts'))
+  elif request.method == 'POST' and not form.validate():
+    errors.extend(format_form_errors(form.errors.items()))
+  elif request.method == 'GET':
+    form.title.data = post.title
+    form.text.data = post.text
+    form.tags.data = ' '.join(post.tags)
 
-  return render_template('edit_post.html', post = post, submit = 'Update')
+  return render_template \
+    ('edit_post.html', id = id, form = form, submit = 'Update', errors = errors)
 
 @app.route('/remove_post/<id>', methods = ['GET'])
 @privileged_required
@@ -125,40 +136,37 @@ def star_post(id):
 
 @app.route('/sign_up', methods = ['GET', 'POST'])
 def sign_up():
-  error = None
-  if request.method == 'POST':
-    if not request.form['username']:
-      error = 'Empty username'
-    elif not request.form['password'] or not request.form['confirm']:
-      error = 'Empty password or confirm password field'
-    elif request.form['password'] !=  request.form['confirm']:
-      error = 'Passwords does not match'
+  errors = []
+  form = SignUpForm(request.form)
+  if request.method == 'POST' and form.validate():
+    # looks like everything ok, check db
+    username = form.username.data
+    password = form.password.data
+    user = list(User.view('users/by_username', key=username))
+    if user:
+      errors.append('User already exists')
     else:
-      # looks like everything ok, check db
-      username = request.form['username']
-      password = request.form['password']
-      user = list(User.view('users/by_username', key=username))
-      if user:
-        error = 'User already exists'
-      else:
-        new_user = make_user_from_request(request)
-        g.db.save_doc(new_user)
-        flash('You have successfully registered')
-        return redirect(url_for('show_posts'))
+      new_user = make_user_from_request(request)
+      g.db.save_doc(new_user)
+      flash('You have successfully registered')
+      return redirect(url_for('show_posts'))
+  elif request.method == 'POST' and not form.validate():
+    errors.extend(format_form_errors(form.errors.items()))
 
-  return render_template('sign_up.html', error = error)
+  return render_template('sign_up.html', form = form, errors = errors)
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
-  error = None
-  if request.method == 'POST':
-    username = request.form['username']
-    password = request.form['password']
+  errors = []
+  form = LoginForm(request.form)
+  if request.method == 'POST' and form.validate():
+    username = form.username.data
+    password = form.password.data
     user = list(User.view('users/by_username', key=username))
     if not user:
-      error = 'Invalid username'
+      errors.append('Invalid username')
     elif make_password_hash(user[0].salt, password) != user[0].password:
-      error = 'Invalid password'
+      errors.append('Invalid password')
     else:
       session['logged_in'] = True
       session['uid'] = user[0]._id
@@ -166,8 +174,10 @@ def login():
 
       flash('You were logged in')
       return redirect(url_for('show_posts'))
+  elif request.method == 'POST' and not form.validate():
+    errors.extend(format_form_errors(form.errors.items()))
 
-  return render_template('login.html', error = error)
+  return render_template('login.html', form = form, errors = errors)
 
 @app.route('/logout')
 def logout():
