@@ -16,7 +16,7 @@
 # install system dependencies
 sudo apt-get install -y python python-pip python-dev couchdb git
 # install python dependencies
-sudo pip install Flask couchdbkit
+sudo pip install Flask Flask-WTF couchdbkit
 # clone repo
 git clone https://github.com/r3t/master-term1-webdev.git
 cd master-term1-webdev/lab2
